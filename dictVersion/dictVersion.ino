@@ -1,4 +1,3 @@
-
 /*********
   First Testrun for G's lighttable a.k.a. Öxe
   Created 12-Nov-2016
@@ -13,13 +12,14 @@
 #ifdef __AVR__
 #include <avr/power.h>
 #include <Wiegand.h>
-#include <avr/pgmspace.h>
+#include <IonDB.h>
 
 #endif
 #define NEO_PIN 6
 #define MAX_PRIMITIVES 18
 #define MAX_X 48 // no more than 48 X and Y coordinate pairs == 48 pixels max
 #define MAX_Y 48
+
 
 
 // Helper Class for keeping track of objects / drawing primitives
@@ -195,6 +195,7 @@ boolean isPaused = false;
 
 int co = 0; // just a helper variable for pure entertainment mode
 
+Dictionary < int, String > *dict = new SkipList < int, String > (key_type_numeric_signed, sizeof(String), sizeof(int), 1);
 // S E T U P
 // ---------
 // ---------
@@ -248,6 +249,13 @@ void setup() {
   wg.begin(); //ADK
 
   lastTimeStamp = millis();
+
+  setup_dictionary();
+}
+
+void setup_dictionary(){
+  //Giraffe
+  dict->insert(13413369,"1,2,2,3,3,3,3,3,3,4,4,4,4,4,4,5,5,6,6,6,6,6;2,1,2,2,3,4,5,6,7,6,7,8,9,10,11,6,7,7,8,9,10,11");
 }
 
 
@@ -663,13 +671,27 @@ void manipulateObject(DrawingObject * o, int mode, boolean ignoreColor) {
     o->updateCoordinates(x_p, y_p, R_, G_, B_);
 }
 
+String getValue(String data, char separator, int index)
+{
+    int found = 0;
+    int strIndex[] = { 0, -1 };
+    int maxIndex = data.length() - 1;
+
+    for (int i = 0; i <= maxIndex && found <= index; i++) {
+        if (data.charAt(i) == separator || i == maxIndex) {
+            found++;
+            strIndex[0] = strIndex[1] + 1;
+            strIndex[1] = (i == maxIndex) ? i+1 : i;
+        }
+    }
+    return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
 
 void insertObject(unsigned long code, int mode_) {
   int updaterX[MAX_X];
   int updaterY[MAX_Y];
   int updaterN;
-
-  
 
   mode = mode_; // 0 == PICKNPLACE-MODE  3 == Random Entertainment
 
@@ -698,8 +720,8 @@ void insertObject(unsigned long code, int mode_) {
   if (code == 9572595) {
     static const int listX[12] = {3, 3, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5};
     static const int listY[12] = {1, 2, 3, 6, 3, 5, 3, 4, 3, 5, 6, 3};
-    memcpy(&updaterX, &listX, sizeof(listX));
-    memcpy(&updaterY, &listY, sizeof(listY));
+    memcpy(updaterX, listX, sizeof(listX));
+    memcpy(updaterY, listY, sizeof(listY));
     updaterN = 12;
     objectCounter ++;
   }
@@ -711,9 +733,8 @@ void insertObject(unsigned long code, int mode_) {
     memcpy(updaterY, listY, sizeof(listY));
     updaterN = 1;
     objectCounter ++;
-  } 
-  
-  //1
+  }
+
   if (code == 6043609) {
     static const int listX[4] = {1, 1, 1, 1};
     static const int listY[4] = {1, 2, 3, 4};
@@ -731,6 +752,17 @@ void insertObject(unsigned long code, int mode_) {
     updaterN = 4;
     objectCounter ++;
   }
+  // fünf5
+  if (code == 239135) {
+    static const int listX[11] = {1, 2, 3, 1, 3, 3, 1, 2, 3, 1, 2};
+    static const int listY[11] = {1, 1, 1, 2, 3, 4, 5, 5, 5, 3, 3};
+    memcpy(updaterX, listX, sizeof(listX));
+    memcpy(updaterY, listY, sizeof(listY));
+    updaterN = 11;
+    objectCounter ++;
+  }
+
+
 
   if (code == 13435006) {
     static const int listX[12] = {1, 2, 3, 1, 3, 3, 3, 1, 2, 3, 1, 1};
@@ -749,184 +781,33 @@ void insertObject(unsigned long code, int mode_) {
     objectCounter ++;
   }
 
-  //Giraffe
-  if (code == 13413369) {
-    static const int listX[22] = {1, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4,  4,  5, 5, 6, 6, 6, 6,  6};
-    static const int listY[22] = {2, 1, 2, 2, 3, 4, 5, 6, 7, 6, 7, 8, 9, 10, 11, 6, 7, 7, 8, 9, 10, 11};
+
+ 
+  String values = dict->get(code);
+  if (err_ok == dict->last_status.error ){
+    String xval = getValue(values, ';', 0);
+    String yval = getValue(values, ';', 1);
+    updaterN = (xval.length()+1)/2;
+    int listX[updaterN]; 
+    int listY[updaterN];
+    for(int i = 0; i < updaterN; i++){
+      listX[i] = getValue(xval, ',', i).toInt();
+      listY[i] = getValue(yval, ',', i).toInt();
+    }
     memcpy(updaterX, listX, sizeof(listX));
     memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 22;
-    objectCounter ++;
-  }
-
-  //Schweini
-  if (code == 5647386) {
-    static const int listX[19] = {1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 7};
-    static const int listY[19] = {4, 2, 3, 4, 3, 4, 5, 6, 3, 4, 5, 3, 4, 5, 3, 4, 5, 6, 3};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 19;
-    objectCounter ++;
-  }
-
-  //Hund
-  if (code == 10835330) {
-    static const int listX[13] = {1, 2, 2, 2, 3, 3, 4, 4, 4, 5, 5, 6, 6};
-    static const int listY[13] = {1, 2, 3, 4, 2, 3, 2, 3, 4, 2, 1, 1, 2};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 13;
-    objectCounter ++;
-  }
-
-  //Menschlein
-  if (code == 6128352) {
-    static const int listX[18] = {1, 1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 6, 6};
-    static const int listY[18] = {4, 7, 3, 6, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 3, 6, 4, 7};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 18;
-    objectCounter ++;
-  }
-
-  //2
-  if (code == 4631776) {
-    static const int listX[11] = {1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3};
-    static const int listY[11] = {1, 3, 4, 5, 1, 3, 5, 1, 2, 3, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 11;
-    objectCounter ++;
-  }
-
-
-  //3
-
-  if (code == 9473543) {
-    static const int listX[10] = {1, 1, 2, 2, 2, 3, 3, 3, 3, 3};
-    static const int listY[10] = {1, 5, 1, 3, 5, 1, 2, 3, 4, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 10;
-    objectCounter ++;
-  }
-
-
-
-  //4
-
-  if (code == 781403) {
-    static const int listX[9] = {1, 1, 1, 2, 3, 3, 3, 3, 3};
-    static const int listY[9] = {1, 2, 3, 3, 1, 2, 3, 4, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 9;
-    objectCounter ++;
-  }
-
-  //+
-  if (code == 10983777) {
-    static const int listX[5] = {1, 2, 2, 2, 3};
-    static const int listY[5] = {3, 2, 3, 4, 3};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 5;
-    objectCounter ++;
-  }
-
-  //-
-  if (code == 12937240) {
-    static const int listX[3] = {1, 2, 3};
-    static const int listY[3] = {3, 3, 3};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 3;
-    objectCounter ++;
-  }
-
-  //dot
-  if (code == 9474971) {
-    static const int listX[1] = {2};
-    static const int listY[1] = {3};
+    objectCounter++;
+  } else {
+    // random point
+    static const int listX[1] = {7};
+    static const int listY[1] = {7};
     memcpy(updaterX, listX, sizeof(listX));
     memcpy(updaterY, listY, sizeof(listY));
     updaterN = 1;
-    objectCounter ++;
-  }
-
-  ///
-  if (code == 5645630) {
-    static const int listX[2] = {2, 2};
-    static const int listY[2] = {2, 4};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 2;
-    objectCounter ++;
-  }
-
-  //=
-  if (code == 236768) {
-    static const int listX[6] = {1, 1, 2, 2, 3, 3};
-    static const int listY[6] = {2, 4, 2, 4, 2, 4};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 6;
-    objectCounter ++;
-  }
-
-  //5
-  if (code == 239135) {
-    static const int listX[11] = {1, 2, 3, 1, 3, 3, 1, 2, 3, 1, 2};
-    static const int listY[11] = {1, 1, 1, 2, 3, 4, 5, 5, 5, 3, 3};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 11;
-    objectCounter ++;
-  }
-  //6
-
-  if (code == 11071908) {
-    static const int listX[12] = {1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3};
-    static const int listY[12] = {1, 2, 3, 4, 5, 1, 3, 5, 1, 3, 4, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 12;
-    objectCounter ++;
-  }
-
-  //7
-
-  if (code == 4582666) {
-    static const int listX[7] = {1, 2, 3, 3, 3, 3, 3};
-    static const int listY[7] = {1, 1, 1, 2, 3, 4, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 7;
-    objectCounter ++;
+    objectCounter ++; 
   }
 
 
-  //8
-
-  if (code == 11073112) {
-    static const int listX[13] = {1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3};
-    static const int listY[13] = {1, 2, 3, 4, 5, 1, 3, 5, 1, 2, 3, 4, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 13;
-    objectCounter ++;
-  }
-
-  //9
-
-  if (code == 234888) {
-    static const int listX[12] = {1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3};
-    static const int listY[12] = {1, 2, 3, 5, 1, 3, 5, 1, 2, 3, 4, 5};
-    memcpy(updaterX, listX, sizeof(listX));
-    memcpy(updaterY, listY, sizeof(listY));
-    updaterN = 12;
-    objectCounter ++;
-  }
  
 
 
